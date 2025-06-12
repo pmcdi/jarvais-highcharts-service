@@ -2,7 +2,7 @@ from itertools import combinations
 import pandas as pd
 from typing import Dict, List
 
-def get_frequency_heatmaps_json(
+def get_freq_heatmaps_json(
     data: pd.DataFrame,
     columns: list
 ) -> List[Dict]:

@@ -1,10 +1,9 @@
 import pandas as pd
-import numpy as np
-from typing import Dict, List
+from typing import Dict
 
 def get_corr_heatmap_json(
-    corr: pd.DataFrame,
-    title: str = "Correlation Matrix"
+    data: pd.DataFrame,
+    method: str = 'spearman',
 ) -> Dict:
     """
     Converts a correlation DataFrame into a Highcharts heatmap JSON object.
@@ -17,6 +16,7 @@ def get_corr_heatmap_json(
         Dict: A dictionary representing a Highcharts JSON configuration.
     """
     # Highcharts heatmap data is a list of [x, y, value] triplets
+    corr = data.corr(method=method)
     # We only want the lower triangle, so we iterate and check indices
     labels = corr.columns.tolist()
     data = []
@@ -34,7 +34,7 @@ def get_corr_heatmap_json(
             "plotBorderWidth": 1
         },
         "title": {
-            "text": title
+            "text": f"Correlation heatmap of continuous variables (method={method.capitalize()})",
         },
         "xAxis": {
             "categories": labels,
@@ -48,7 +48,7 @@ def get_corr_heatmap_json(
             "min": -1,
             "max": 1,
             "stops": [
-                [0, '#3060cf'], # blue for -1
+                [0, "#3040cf"], # blue for -1
                 [0.5, '#fffbbc'], # yellow for 0
                 [1, '#c4463a'] # red for 1
             ]

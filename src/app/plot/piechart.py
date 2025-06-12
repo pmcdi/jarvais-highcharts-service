@@ -5,8 +5,11 @@ from typing import Dict
 def get_pie_chart_json(data: pd.DataFrame, var: str) -> Dict:
     """
     Generates a Highcharts JSON object for a pie chart
+
+    Args:
+        data (pd.DataFrame): The input data.
+        var (str): The variable to plot.
     """
-    # 1. Pie Chart JSON
     pie_data_grouped = data.groupby(var, observed=False).size().sort_values(ascending=False)
     pie_series_data = [
         {"name": str(label), "y": value}

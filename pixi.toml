@@ -10,6 +10,8 @@ version = "0.1.0"
 
 [dependencies]
 python = "3.12.*"
+flask = ">=3.1.1,<4"
+flask-restful = ">=0.3.10,<0.4"
 
 [pypi-dependencies]
 jarvais = ">=0.13.1, <0.14"
