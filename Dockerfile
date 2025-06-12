@@ -14,7 +14,7 @@ COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
 # Copy application code
-COPY src/ ./src/
+COPY . /app
 
 # Set environment variables
 ENV PYTHONUNBUFFERED=1
@@ -24,4 +24,5 @@ ENV FLASK_APP=src/app_production.py
 EXPOSE 5000
 
 # Run the application
-CMD ["python", "src/app.py"]
+CMD ["/bin/bash"]
+# CMD ["python", "src/app.py"]

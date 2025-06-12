@@ -1,23 +1,25 @@
-from flask import Flask, request, jsonify, send_file
+from flask import Flask, request, jsonify
 from werkzeug.utils import secure_filename
 import pandas as pd
 import io
 import base64
-from typing import Dict, Any, Optional
+from typing import Dict, Any
 import os
 import uuid
 from datetime import datetime
 from jarvais import Analyzer
-from .plot import get_corr_heatmap_json, get_freq_heatmaps_json, get_pie_chart_json
+from plot import get_corr_heatmap_json, get_freq_heatmaps_json, get_pie_chart_json
 app = Flask(__name__)
 
 # Configuration
 app.config['MAX_CONTENT_LENGTH'] = 100 * 1024 * 1024  # 16MB max file size
+app.config['TRAP_HTTP_EXCEPTIONS'] = True # For debugging 400s
 app.config['UPLOAD_FOLDER'] = 'uploads'
 ALLOWED_EXTENSIONS = {'csv'}
 
 # In-memory storage for analyzers (in production, use Redis or similar)
 analyzers: Dict[str, Analyzer] = {}
+requests: Dict[str, Any] = {}
 
 # Ensure upload directory exists
 os.makedirs(app.config['UPLOAD_FOLDER'], exist_ok=True)
@@ -28,7 +30,6 @@ def allowed_file(filename: str) -> bool:
     return '.' in filename and \
            filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
 
-
 @app.route('/upload', methods=['POST'])
 def upload_csv() -> tuple[Dict[str, Any], int]:
     """
@@ -37,6 +38,7 @@ def upload_csv() -> tuple[Dict[str, Any], int]:
     Returns:
         JSON response with analyzer_id and basic data info
     """
+    print(request.get_json(silent=True))  # Debugging line to print incoming JSON
     if 'file' not in request.files:
         return jsonify({'error': 'No file part in request'}), 400
     
@@ -58,8 +60,8 @@ def upload_csv() -> tuple[Dict[str, Any], int]:
         file.save(filepath)
         
         # Read CSV and initialize Analyzer
-        df = pd.read_csv(filepath)
-        analyzer = Analyzer(df)
+        df = pd.read_csv(filepath, index_col=0)
+        analyzer = Analyzer(df, app.config['UPLOAD_FOLDER'])
         
         # Store analyzer instance
         analyzers[analyzer_id] = analyzer
@@ -68,10 +70,10 @@ def upload_csv() -> tuple[Dict[str, Any], int]:
         data_info = {
             'analyzer_id': analyzer_id,
             'file_shape': df.shape,
-            'categorical_variables': analyzer.categorical_variables,
-            'continuous_variables': analyzer.continuous_variables,
-            'missing_summary': analyzer.missing_summary.to_dict() if hasattr(analyzer, 'missing_summary') else None,
-            'outlier_summary': analyzer.outlier_summary.to_dict() if hasattr(analyzer, 'outlier_summary') else None,
+            'categorical_variables': analyzer.settings.categorical_columns,
+            'continuous_variables': analyzer.settings.continuous_columns,
+            # 'missing_summary': analyzer.missing_summary.to_dict() if hasattr(analyzer, 'missing_summary') else None,
+            # 'outlier_summary': analyzer.outlier_summary.to_dict() if hasattr(analyzer, 'outlier_summary') else None,
             'created_at': datetime.now().isoformat()
         }
         
@@ -83,8 +85,8 @@ def upload_csv() -> tuple[Dict[str, Any], int]:
     except Exception as e:
         return jsonify({'error': f'Failed to process file: {str(e)}'}), 500
 
-@app.route('/visualization/<analyzer_id>/correlation_heatmap/<method>', methods=['GET'])
-def get_correlation_heatmap(analyzer_id: str, method: str) -> tuple[Dict[str, Any], int]:
+@app.route('/visualization/<analyzer_id>/correlation_heatmap', methods=['GET'])
+def get_correlation_heatmap(analyzer_id: str) -> tuple[Dict[str, Any], int]:
     """
     Get correlation heatmap for continuous variables.
     
@@ -99,6 +101,7 @@ def get_correlation_heatmap(analyzer_id: str, method: str) -> tuple[Dict[str, An
         return jsonify({'error': 'Analyzer not found'}), 404
     
     try:
+        method = request.args.get('method')
         analyzer = analyzers[analyzer_id]
         
         # Generate correlation heatmap
@@ -107,7 +110,6 @@ def get_correlation_heatmap(analyzer_id: str, method: str) -> tuple[Dict[str, An
         
     except Exception as e:
         return jsonify({'error': f'Failed to generate correlation heatmap: {str(e)}'}), 500
-
 
 @app.route('/visualization/<analyzer_id>/frequency_heatmap', methods=['GET'])
 def get_frequency_heatmap(analyzer_id: str) -> tuple[Dict[str, Any], int]:
@@ -123,57 +125,24 @@ def get_frequency_heatmap(analyzer_id: str) -> tuple[Dict[str, Any], int]:
     if analyzer_id not in analyzers:
         return jsonify({'error': 'Analyzer not found'}), 404
     
-    try:
-        analyzer = analyzers[analyzer_id]
-        
-        # Generate frequency heatmap
-        chart_json = get_freq_heatmaps_json(analyzer.data[analyzer.settings.categorical_columns])
-        return jsonify(chart_json), 200
+    # try:
+    analyzer = analyzers[analyzer_id]
+    column1 = request.args.get('column1')
+    column2 = request.args.get('column2')
 
-    except Exception as e:
-        return jsonify({'error': f'Failed to generate frequency heatmap: {str(e)}'}), 500
-
-
-@app.route('/visualization/<analyzer_id>/pairplot', methods=['GET'])
-def get_pairplot(analyzer_id: str) -> tuple[Dict[str, Any], int]:
-    """
-    Get pairplot for continuous variables.
+    print(column1, column2)
+    print(analyzer.settings.categorical_columns)
     
-    Args:
-        analyzer_id: Unique identifier for the analyzer instance
-        
-    Returns:
-        JSON response with base64 encoded image or error
-    """
-    if analyzer_id not in analyzers:
-        return jsonify({'error': 'Analyzer not found'}), 404
-    
-    try:
-        analyzer = analyzers[analyzer_id]
-        
-        # Get optional parameters
-        max_vars = request.args.get('max_vars', default=10, type=int)
-        
-        # Generate pairplot
-        fig = analyzer.pairplot(max_vars=max_vars)
-        
-        # Convert matplotlib figure to base64
-        img_buffer = io.BytesIO()
-        fig.savefig(img_buffer, format='png', bbox_inches='tight', dpi=150)
-        img_buffer.seek(0)
-        img_base64 = base64.b64encode(img_buffer.getvalue()).decode('utf-8')
-        
-        return jsonify({
-            'analyzer_id': analyzer_id,
-            'visualization_type': 'pairplot',
-            'image': img_base64,
-            'format': 'png',
-            'parameters': {'max_vars': max_vars}
-        }), 200
-        
-    except Exception as e:
-        return jsonify({'error': f'Failed to generate pairplot: {str(e)}'}), 500
+    if column1 not in analyzer.settings.categorical_columns or column2 not in analyzer.settings.categorical_columns:
+        return jsonify({'error': 'Invalid or missing categorical columns'}), 400
 
+    # Generate frequency heatmap
+    chart_json = get_freq_heatmaps_json(analyzer.data, column1, column2)
+    return jsonify(chart_json), 200
+
+    # except Exception as e:
+    #     print(e)
+    #     return jsonify({'error': f'Failed to generate frequency heatmap: {str(e)}'}), 500
 
 @app.route('/visualization/<analyzer_id>/pie_chart', methods=['GET'])
 def get_pie_chart(analyzer_id: str) -> tuple[Dict[str, Any], int]:
@@ -194,13 +163,13 @@ def get_pie_chart(analyzer_id: str) -> tuple[Dict[str, Any], int]:
     if not var:
         return jsonify({'error': 'Variable not specified'}), 400
 
-    try:
-        analyzer = analyzers[analyzer_id]
-        chart_json = get_pie_chart_json(analyzer.data, var)
-        return jsonify(chart_json), 200
+    # try:
+    analyzer = analyzers[analyzer_id]
+    chart_json = get_pie_chart_json(analyzer.data, var)
+    return jsonify(chart_json), 200
 
-    except Exception as e:
-        return jsonify({'error': f'Failed to generate pie chart: {str(e)}'}), 500
+    # except Exception as e:
+    #     return jsonify({'error': f'Failed to generate pie chart: {str(e)}'}), 500
 
 @app.route('/analyzers', methods=['GET'])
 def list_analyzers() -> tuple[Dict[str, Any], int]:
@@ -217,6 +186,25 @@ def list_analyzers() -> tuple[Dict[str, Any], int]:
         'count': len(analyzer_list),
         'analyzers': analyzer_list
     }), 200
+
+@app.route('/analyzers/<analyzer_id>', methods=['GET'])
+def get_analyzer(analyzer_id: str) -> tuple[Dict[str, Any], int]:
+    """List all active analyzer sessions."""
+    if analyzer_id not in analyzers:
+        return jsonify({'error': 'Analyzer not found'}), 500
+    
+    try:
+        analyzer = analyzers[analyzer_id]
+        data_info = {
+                'analyzer_id': analyzer_id,
+                'file_shape': analyzer.data.shape,
+                'categorical_variables': analyzer.settings.categorical_columns,
+                'continuous_variables': analyzer.settings.continuous_columns,
+            }
+        
+        return jsonify(data_info), 200
+    except Exception as e:
+        return jsonify({'error': f'Failed to generate pie chart: {str(e)}'}), 500
 
 @app.route('/analyzers/<analyzer_id>', methods=['DELETE'])
 def delete_analyzer(analyzer_id: str) -> tuple[Dict[str, Any], int]:

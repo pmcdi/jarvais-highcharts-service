@@ -22,9 +22,9 @@ def get_corr_heatmap_json(
     data = []
     for y, row_label in enumerate(labels):
         for x, col_label in enumerate(labels):
-            if x < y: # Only add points in the lower triangle
-                value = corr.loc[row_label, col_label]
-                data.append([x, y, round(value, 2)])
+            # if x <= y: # Only add points in the lower triangle
+            value = corr.loc[row_label, col_label]
+            data.append([x, y, round(value, 2)])
 
     highcharts_config = {
         "chart": {
