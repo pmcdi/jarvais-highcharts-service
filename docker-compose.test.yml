@@ -1,0 +1,60 @@
+version: '3.8'
+
+services:
+  jarvais-api-test:
+    build: .
+    ports:
+      - "5001:5000"
+    environment:
+      - REDIS_HOST=redis-test
+      - REDIS_PORT=6379
+      - REDIS_DB=1
+      - SESSION_TTL=300
+      - FLASK_ENV=testing
+    depends_on:
+      redis-test:
+        condition: service_healthy
+    volumes:
+      - ./uploads:/app/uploads
+      - ./tests:/app/tests
+    restart: "no"
+    command: ["python", "src/app_production.py"]
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:5000/api/v1/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+
+  redis-test:
+    image: redis:7-alpine
+    ports:
+      - "6380:6379"
+    restart: "no"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+      start_period: 5s
+    tmpfs:
+      - /data  # Use tmpfs for faster testing
+
+  test-runner:
+    build: .
+    depends_on:
+      jarvais-api-test:
+        condition: service_healthy
+      redis-test:
+        condition: service_healthy
+    environment:
+      - REDIS_HOST=redis-test
+      - REDIS_PORT=6379
+      - REDIS_DB=1
+      - API_BASE_URL=http://jarvais-api-test:5000
+    volumes:
+      - ./tests:/app/tests
+      - ./src:/app/src
+    command: ["python", "-m", "pytest", "-v", "--tb=short"]
+    profiles:
+      - test
