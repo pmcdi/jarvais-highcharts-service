@@ -7,7 +7,7 @@ platforms = ["osx-64", "linux-64", "win-64"]
 version = "0.1.0"
 
 [tasks]
-launch = "python src/app.py"
+debug = "python src/app.py"
 
 [dependencies]
 python = "3.12.*"
@@ -17,3 +17,14 @@ flask-restful = ">=0.3.10,<0.4"
 [pypi-dependencies]
 jarvais = ">=0.13.1, <0.14"
 
+[feature.production.pypi-dependencies]
+redis = "*"
+
+[feature.production.tasks]
+launch = "python src/app_production.py"
+
+[feature.production.dependencies]
+flask_cors = ">=4.0.0,<5"
+
+[environments]
+production = ["production"]

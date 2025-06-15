@@ -5,25 +5,25 @@ services:
     build: .
     ports:
       - "5000:5000"
-    # environment:
-    #   - REDIS_HOST=redis
-    #   - REDIS_PORT=6379
-    #   - REDIS_DB=0
-    #   - SESSION_TTL=3600
-    # depends_on:
-    #   - redis
+    environment:
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+      - REDIS_DB=0
+      - SESSION_TTL=3600
+    depends_on:
+      - redis
     volumes:
       - ./uploads:/app/uploads
     restart: unless-stopped
-    command: ["python", "src/app.py"]
+    command: ["pixi", "run", "launch"]
 
-  # redis:
-  #   image: redis:7-alpine
-  #   ports:
-  #     - "6379:6379"
-  #   volumes:
-  #     - redis_data:/data
-  #   restart: unless-stopped
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    restart: unless-stopped
 
-# volumes:
-#   redis_data:
+volumes:
+  redis_data:
