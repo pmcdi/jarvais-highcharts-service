@@ -23,6 +23,14 @@ logger = logging.getLogger(__name__)
 app = Flask(__name__)
 CORS(app)  # Enable CORS for all routes
 
+# Security headers
+@app.after_request
+def after_request(response):
+    response.headers['X-Content-Type-Options'] = 'nosniff'
+    response.headers['X-Frame-Options'] = 'DENY'
+    response.headers['X-XSS-Protection'] = '1; mode=block'
+    return response
+
 
 # Configuration
 app.config['MAX_CONTENT_LENGTH'] = 100 * 1024 * 1024  # 16MB max file size
@@ -53,25 +61,27 @@ except:
 # Ensure upload directory exists
 os.makedirs(app.config['UPLOAD_FOLDER'], exist_ok=True)
 
-def check_analyzer(redis_client: redis.Redis, analyzer_id: str) -> bool:
+def check_analyzer(analyzer_id: str) -> bool:
     """
-    Checks if a given analyzer_id exists as a key in Redis.
+    Checks if a given analyzer_id exists in storage.
 
     Args:
-        redis_client (redis.Redis): An active Redis client connection instance.
-        analyzer_id (str): The ID to check for in Redis.
+        analyzer_id (str): The ID to check for in storage.
 
     Returns:
-        bool: True if the key exists, False otherwise.
+        bool: True if the analyzer exists, False otherwise.
     """
-    try:
-        # The .exists() command returns the number of keys that exist from the list provided.
-        # For a single key, it returns 1 if it exists, 0 otherwise.
-        return redis_client.exists(analyzer_id) == 1
-    except redis.exceptions.ConnectionError as e:
-        # Handle cases where the Redis server might be down
-        print(f"Error connecting to Redis: {e}")
-        return False
+    if USE_REDIS:
+        try:
+            # The .exists() command returns the number of keys that exist from the list provided.
+            # For a single key, it returns 1 if it exists, 0 otherwise.
+            return redis_client.exists(f"analyzer:{analyzer_id}") == 1
+        except redis.exceptions.ConnectionError as e:
+            # Handle cases where the Redis server might be down
+            logger.error(f"Error connecting to Redis: {e}")
+            return False
+    else:
+        return analyzer_id in analyzers
 
 def store_analyzer(analyzer_id: str, analyzer: Analyzer) -> None:
     """Store analyzer instance in Redis or memory."""
@@ -110,6 +120,14 @@ def allowed_file(filename: str) -> bool:
     return '.' in filename and \
            filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
 
+def validate_analyzer_id(analyzer_id: str) -> bool:
+    """Validate analyzer ID format (UUID)."""
+    try:
+        uuid.UUID(analyzer_id)
+        return True
+    except ValueError:
+        return False
+
 @app.route('/upload', methods=['POST'])
 def upload_csv() -> tuple[Dict[str, Any], int]:
     """
@@ -118,7 +136,8 @@ def upload_csv() -> tuple[Dict[str, Any], int]:
     Returns:
         JSON response with analyzer_id and basic data info
     """
-    print(request.get_json(silent=True))  # Debugging line to print incoming JSON
+    # Log request for debugging if needed
+    logger.debug(f"Upload request from {request.remote_addr}")
     if 'file' not in request.files:
         return jsonify({'error': 'No file part in request'}), 400
     
@@ -177,7 +196,10 @@ def get_correlation_heatmap(analyzer_id: str) -> tuple[Dict[str, Any], int]:
     Returns:
         JSON response with base64 encoded image or error
     """
-    if not check_analyzer(redis_client, analyzer_id):
+    if not validate_analyzer_id(analyzer_id):
+        return jsonify({'error': 'Invalid analyzer ID format'}), 400
+        
+    if not check_analyzer(analyzer_id):
         return jsonify({'error': 'Analyzer not found'}), 404
     
     try:
@@ -202,27 +224,30 @@ def get_frequency_heatmap(analyzer_id: str) -> tuple[Dict[str, Any], int]:
     Returns:
         JSON response with base64 encoded image or error
     """
-    if not check_analyzer(redis_client, analyzer_id):
+    if not validate_analyzer_id(analyzer_id):
+        return jsonify({'error': 'Invalid analyzer ID format'}), 400
+        
+    if not check_analyzer(analyzer_id):
         return jsonify({'error': 'Analyzer not found'}), 404
     
-    # try:
-    analyzer = get_analyzer(analyzer_id)
-    column1 = request.args.get('column1')
-    column2 = request.args.get('column2')
+    try:
+        analyzer = get_analyzer(analyzer_id)
+        column1 = request.args.get('column1')
+        column2 = request.args.get('column2')
 
-    print(column1, column2)
-    print(analyzer.settings.categorical_columns)
+        logger.debug(f"Frequency heatmap request: {column1}, {column2}")
+        logger.debug(f"Available categorical columns: {analyzer.settings.categorical_columns}")
     
-    if column1 not in analyzer.settings.categorical_columns or column2 not in analyzer.settings.categorical_columns:
-        return jsonify({'error': 'Invalid or missing categorical columns'}), 400
+        if column1 not in analyzer.settings.categorical_columns or column2 not in analyzer.settings.categorical_columns:
+            return jsonify({'error': 'Invalid or missing categorical columns'}), 400
 
-    # Generate frequency heatmap
-    chart_json = get_freq_heatmaps_json(analyzer.data, column1, column2)
-    return jsonify(chart_json), 200
+        # Generate frequency heatmap
+        chart_json = get_freq_heatmaps_json(analyzer.data, column1, column2)
+        return jsonify(chart_json), 200
 
-    # except Exception as e:
-    #     print(e)
-    #     return jsonify({'error': f'Failed to generate frequency heatmap: {str(e)}'}), 500
+    except Exception as e:
+        logger.error(f"Failed to generate frequency heatmap: {str(e)}")
+        return jsonify({'error': f'Failed to generate frequency heatmap: {str(e)}'}), 500
 
 @app.route('/visualization/<analyzer_id>/pie_chart', methods=['GET'])
 def get_pie_chart(analyzer_id: str) -> tuple[Dict[str, Any], int]:
@@ -236,20 +261,24 @@ def get_pie_chart(analyzer_id: str) -> tuple[Dict[str, Any], int]:
     Returns:
         JSON response with base64 encoded image or error
     """
-    if not check_analyzer(redis_client, analyzer_id):
+    if not validate_analyzer_id(analyzer_id):
+        return jsonify({'error': 'Invalid analyzer ID format'}), 400
+        
+    if not check_analyzer(analyzer_id):
         return jsonify({'error': 'Analyzer not found'}), 404
 
     var = request.args.get('var')
     if not var:
         return jsonify({'error': 'Variable not specified'}), 400
 
-    # try:
-    analyzer = get_analyzer(analyzer_id)
-    chart_json = get_pie_chart_json(analyzer.data, var)
-    return jsonify(chart_json), 200
+    try:
+        analyzer = get_analyzer(analyzer_id)
+        chart_json = get_pie_chart_json(analyzer.data, var)
+        return jsonify(chart_json), 200
 
-    # except Exception as e:
-    #     return jsonify({'error': f'Failed to generate pie chart: {str(e)}'}), 500
+    except Exception as e:
+        logger.error(f"Failed to generate pie chart: {str(e)}")
+        return jsonify({'error': f'Failed to generate pie chart: {str(e)}'}), 500
 
 @app.route('/analyzers', methods=['GET'])
 def list_analyzers() -> tuple[Dict[str, Any], int]:
@@ -270,7 +299,10 @@ def list_analyzers() -> tuple[Dict[str, Any], int]:
 @app.route('/analyzers/<analyzer_id>', methods=['GET'])
 def analyzer_info(analyzer_id: str) -> tuple[Dict[str, Any], int]:
     """Get information about a specific analyzer."""
-    if not check_analyzer(redis_client, analyzer_id):
+    if not validate_analyzer_id(analyzer_id):
+        return jsonify({'error': 'Invalid analyzer ID format'}), 400
+        
+    if not check_analyzer(analyzer_id):
         return jsonify({'error': 'Analyzer not found'}), 404
 
     try:
@@ -289,6 +321,9 @@ def analyzer_info(analyzer_id: str) -> tuple[Dict[str, Any], int]:
 @app.route('/api/v1/analyzers/<analyzer_id>', methods=['DELETE'])
 def delete_analyzer(analyzer_id: str) -> tuple[Dict[str, Any], int]:
     """Delete an analyzer session."""
+    if not validate_analyzer_id(analyzer_id):
+        return jsonify({'error': 'Invalid analyzer ID format'}), 400
+        
     if delete_analyzer_storage(analyzer_id):
         logger.info(f"Deleted analyzer {analyzer_id}")
         return jsonify({'message': f'Analyzer {analyzer_id} deleted successfully'}), 200
@@ -316,4 +351,5 @@ def health_check() -> tuple[Dict[str, Any], int]:
 
 
 if __name__ == '__main__':
-    app.run(debug=True, host='0.0.0.0', port=5000)
+    # Production should use a proper WSGI server like gunicorn
+    app.run(debug=False, host='0.0.0.0', port=5000)
