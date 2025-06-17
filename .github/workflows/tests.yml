@@ -136,4 +136,3 @@ jobs:
         path: |
           bandit-report.json
           safety-report.json
-- Applied all patches
