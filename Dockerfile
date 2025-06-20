@@ -1,28 +1,38 @@
-FROM python:3.11-slim
+FROM ubuntu:22.04
 
-WORKDIR /app
+# Set environment variables
+ENV DEBIAN_FRONTEND=noninteractive
+ENV PYTHONUNBUFFERED=1
 
 # Install system dependencies
 RUN apt-get update && apt-get install -y \
-    gcc \
+    curl \
+    wget \
+    build-essential \
+    libglib2.0-0 \
     && rm -rf /var/lib/apt/lists/*
 
-RUN pip install --upgrade pip
+# Install pixi
+RUN curl -fsSL https://pixi.sh/install.sh | bash
+ENV PATH="/root/.pixi/bin:${PATH}"
 
-# Copy requirements first for better caching
-COPY requirements.txt .
-RUN pip install --no-cache-dir -r requirements.txt
+# Set working directory
+WORKDIR /app
 
-# Copy application code
-COPY . /app
+# Copy pixi configuration files
+COPY pixi.toml pixi.lock* ./
 
-# Set environment variables
-ENV PYTHONUNBUFFERED=1
-ENV FLASK_APP=src/app_production.py
+# Install dependencies using pixi
+RUN pixi install
 
-# Expose port
+# Copy application source code
+COPY src/ ./src/
+
+# Copy previously uploaded datasets
+COPY uploads/ ./uploads/
+
+# Expose the port that Flask runs on
 EXPOSE 5000
 
-# Run the application
+# Use pixi to run the application
 CMD ["/bin/bash"]
-# CMD ["python", "src/app.py"]

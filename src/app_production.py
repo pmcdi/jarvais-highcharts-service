@@ -10,7 +10,7 @@ from werkzeug.utils import secure_filename
 
 import pandas as pd
 from jarvais import Analyzer
-from plot import get_corr_heatmap_json, get_freq_heatmaps_json, get_pie_chart_json
+from plot import get_corr_heatmap_json, get_freq_heatmaps_json, get_pie_chart_json, get_umap_json
 
 import redis, pickle, logging
 
@@ -67,7 +67,7 @@ def check_analyzer(redis_client: redis.Redis, analyzer_id: str) -> bool:
     try:
         # The .exists() command returns the number of keys that exist from the list provided.
         # For a single key, it returns 1 if it exists, 0 otherwise.
-        return redis_client.exists(analyzer_id) == 1
+        return redis_client.exists(f"analyzer:{analyzer_id}") == 1
     except redis.exceptions.ConnectionError as e:
         # Handle cases where the Redis server might be down
         print(f"Error connecting to Redis: {e}")
@@ -110,6 +110,21 @@ def allowed_file(filename: str) -> bool:
     return '.' in filename and \
            filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
 
+def get_umap(data: pd.DataFrame, continuous_columns: list) -> pd.DataFrame:
+    """
+    Generate UMAP projection for continuous variables.
+    
+    Args:
+        data (pd.DataFrame): Input DataFrame containing the data.
+        continuous_columns (list): List of continuous variable column names.
+        
+    Returns:
+        pd.DataFrame: UMAP transformed data.
+    """
+    from umap import UMAP
+    umap_data = UMAP(n_components=2, random_state=42).fit_transform(data[continuous_columns])
+    return pd.DataFrame(umap_data, columns=['UMAP1', 'UMAP2'], index=data.index)
+
 @app.route('/upload', methods=['POST'])
 def upload_csv() -> tuple[Dict[str, Any], int]:
     """
@@ -130,40 +145,44 @@ def upload_csv() -> tuple[Dict[str, Any], int]:
     if not allowed_file(file.filename):
         return jsonify({'error': 'Only CSV files are allowed'}), 400
     
-    try:
-        # Generate unique ID for this analyzer session
-        analyzer_id = str(uuid.uuid4())
+    # try:
+    # Generate unique ID for this analyzer session
+    analyzer_id = str(uuid.uuid4())
+    
+    # Read CSV directly from memory
+    file_content = file.read()
+    df = pd.read_csv(io.BytesIO(file_content), index_col=0)
+    
+    # Initialize Analyzer
+    analyzer = Analyzer(df, app.config['UPLOAD_FOLDER'])
+    # analyzer.run()
+
+    # Calculate UMAP of continuous variables
+    if analyzer.settings.continuous_columns:
+        analyzer.umap_data = get_umap(analyzer.data, continuous_columns=analyzer.settings.continuous_columns)
+    
+    # Store analyzer instance
+    store_analyzer(analyzer_id, analyzer)
+    
+    # Get basic info about the data
+    data_info = {
+        'analyzer_id': analyzer_id,
+        'filename': secure_filename(file.filename),
+        'file_shape': df.shape,
+        # 'dtypes': df.dtypes.astype(str).to_dict(),
+        'categorical_variables': analyzer.settings.categorical_columns,
+        'continuous_variables': analyzer.settings.continuous_columns,
+        # 'missing_summary': analyzer.missing_summary.to_dict() if hasattr(analyzer, 'missing_summary') else None,
+        # 'outlier_summary': analyzer.outlier_summary.to_dict() if hasattr(analyzer, 'outlier_summary') else None,
+        'created_at': datetime.now().isoformat(),
+        'expires_at': (datetime.utcnow() + timedelta(seconds=app.config['SESSION_TTL'])).isoformat()
+    }
+    
+    
+    return jsonify(data_info), 201
         
-        # Read CSV directly from memory
-        file_content = file.read()
-        df = pd.read_csv(io.BytesIO(file_content))
-        
-        # Initialize Analyzer
-        analyzer = Analyzer(df, app.config['UPLOAD_FOLDER'])
-        analyzer.run()
-        
-        # Store analyzer instance
-        store_analyzer(analyzer_id, analyzer)
-        
-        # Get basic info about the data
-        data_info = {
-            'analyzer_id': analyzer_id,
-            'filename': secure_filename(file.filename),
-            'file_shape': df.shape,
-            'dtypes': df.dtypes.astype(str).to_dict(),
-            'categorical_variables': analyzer.settings.categorical_columns,
-            'continuous_variables': analyzer.settings.continuous_columns,
-            # 'missing_summary': analyzer.missing_summary.to_dict() if hasattr(analyzer, 'missing_summary') else None,
-            # 'outlier_summary': analyzer.outlier_summary.to_dict() if hasattr(analyzer, 'outlier_summary') else None,
-            'created_at': datetime.now().isoformat(),
-            'expires_at': (datetime.utcnow() + timedelta(seconds=app.config['SESSION_TTL'])).isoformat()
-        }
-        
-        
-        return jsonify(data_info), 201
-        
-    except Exception as e:
-        return jsonify({'error': f'Failed to process file: {str(e)}'}), 500
+    # except Exception as e:
+    #     return jsonify({'error': f'Failed to process file: {str(e)}'}), 500
 
 @app.route('/visualization/<analyzer_id>/correlation_heatmap', methods=['GET'])
 def get_correlation_heatmap(analyzer_id: str) -> tuple[Dict[str, Any], int]:
@@ -251,21 +270,72 @@ def get_pie_chart(analyzer_id: str) -> tuple[Dict[str, Any], int]:
     # except Exception as e:
     #     return jsonify({'error': f'Failed to generate pie chart: {str(e)}'}), 500
 
+@app.route('/visualization/<analyzer_id>/umap_scatterplot', methods=['GET'])
+def get_umap_plot(analyzer_id: str) -> tuple[Dict[str, Any], int]:
+    """
+    [ WARNING: This endpoint is current broken.]
+
+    Get pie chart for a specific variable.
+    
+    Args:
+        analyzer_id: Unique identifier for the analyzer instance
+        var: The variable to plot
+
+    Returns:
+        JSON response with base64 encoded image or error
+    """
+    return jsonify({'error': 'This endpoint is currently broken.'}), 500
+
+    if not check_analyzer(redis_client, analyzer_id):
+        return jsonify({'error': 'Analyzer not found'}), 404
+    
+    analyzer = get_analyzer(analyzer_id)
+    
+    hue = request.args.get('hue')
+    if hue:
+        hue_data = analyzer.data[hue] if hue in analyzer.data.columns else None
+    else:
+        hue_data = None
+
+    chart_json = get_umap_json(analyzer.umap_data, hue_data)
+    return jsonify(chart_json), 200
+
+    # except Exception as e:
+    #     return jsonify({'error': f'Failed to generate pie chart: {str(e)}'}), 500
+
 @app.route('/analyzers', methods=['GET'])
 def list_analyzers() -> tuple[Dict[str, Any], int]:
     """List all active analyzer sessions."""
-    analyzer_list = [
-        {
-            'analyzer_id': aid,
-            'has_data': aid in analyzers
-        }
-        for aid in analyzers.keys()
-    ]
-    
-    return jsonify({
-        'count': len(analyzer_list),
-        'analyzers': analyzer_list
-    }), 200
+    if USE_REDIS:
+        # Get all keys matching the analyzer pattern
+        keys = redis_client.keys("analyzer:*")
+        analyzers = {key.decode('utf-8').split(':')[1]: True for key in keys}
+        
+        analyzer_list = [
+            {
+                'analyzer_id': aid,
+                'has_data': True
+            } for aid in analyzers.keys()
+        ]
+        
+        return jsonify({
+            'count': len(analyzer_list),
+            'analyzers': analyzer_list
+        }), 200
+        
+    else:
+        analyzer_list = [
+            {
+                'analyzer_id': aid,
+                'has_data': aid in analyzers
+            }
+            for aid in analyzers.keys()
+        ]
+        
+        return jsonify({
+            'count': len(analyzer_list),
+            'analyzers': analyzer_list
+        }), 200
 
 @app.route('/analyzers/<analyzer_id>', methods=['GET'])
 def analyzer_info(analyzer_id: str) -> tuple[Dict[str, Any], int]:
@@ -316,4 +386,4 @@ def health_check() -> tuple[Dict[str, Any], int]:
 
 
 if __name__ == '__main__':
-    app.run(debug=True, host='0.0.0.0', port=5000)
+    app.run(host='0.0.0.0', port=5000)
