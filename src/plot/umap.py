@@ -1,9 +1,7 @@
 import pandas as pd
-from typing import Dict, List
-from umap import UMAP
 
 def get_umap_json(umap_data: pd.DataFrame, 
-                  hue: pd.Series) -> dict:
+                  hue: pd.Series | None = None) -> dict:
     """
     Generates a 2D UMAP projection of the specified continuous columns and returns a Highcharts JSON configuration.
 
@@ -54,37 +52,41 @@ def get_umap_json(umap_data: pd.DataFrame,
         }
     }
 
+    # Disable legend by default
+    highcharts_config["legend"] = {"enabled": False}
+
     umap_subsets = {}
     series_list = []
-    if hue:
+
+    # If hue is provided, create subsets of the data
+    if hue is not None:
         unique_categories = hue.unique()
         for category in unique_categories:
             mask = hue == category
             umap_subsets[category] = umap_data[mask]
         
-        # Add legend
+        # Add legend if hue is provided
         highcharts_config["legend"] = {"enabled": True, "title": {"text": "Value"}}
 
         # Update tooltip to include hue information
         highcharts_config["plotOptions"]["scatter"]["tooltip"]["pointFormat"] = (
-            f"{{series.name}}<br>"
+            f"{{series.name}}<br>"  # noqa: F541
             "Component 1: {point.x:.3f}<br>Component 2: {point.y:.3f}"
         )
 
+    # Simple if no hue is provided
     else:
         umap_subsets = {"Data Points": umap_data}
-        
-        # Disable legend if no hue is provided
-        highcharts_config["legend"] = {"enabled": False}    
 
     # add data to series
     for category, umap_subset in umap_subsets.items():
+        print(umap_subset)
         series_list.append({
             "name": str(category),
-            "data": [{"x": float(point[0]), "y": float(point[1])} for point in umap_subset],
+            "data": [{"x": float(point[0]), "y": float(point[1])} for point in umap_subset.values],
             "marker": {
-                "fillOpacity": 0.7,
-                "radius": 4
+                "fillOpacity": 0.5,
+                "radius": 2.5
             }
         })
         

@@ -1,30 +1,33 @@
 [project]
 authors = ["skim2257 <Sejin Kim>"]
 channels = ["conda-forge"]
-description = "Microservice to return jarvAIs Analyzer results compatible with HighCharts"
+description = "Microservice to return jarvAIs Analyzer results compatible with HighCharts using FastAPI"
 name = "jarvais-highcharts-service"
 platforms = ["osx-64", "linux-64", "win-64"]
-version = "0.1.0"
+version = "1.0.0"
 
 [tasks]
-debug = "python src/app.py"
+dev = "RELOAD=true LOG_LEVEL=debug python run_fastapi.py"
+test = "python test_fastapi.py"
+launch = "PRODUCTION=true APP_FILE=main python run_fastapi.py"
+prod = "PRODUCTION=true APP_FILE=main python run_fastapi.py"
+dev-reload = "RELOAD=true LOG_LEVEL=debug python run_fastapi.py"
+docs = "echo 'API docs available at http://localhost:5000/docs'"
 
 [dependencies]
 python = "3.12.*"
-flask = ">=3.1.1,<4"
-flask-restful = ">=0.3.10,<0.4"
+redis-py = ">=5.0.1,<6"
+requests = ">=2.31.0,<3"
 
 [pypi-dependencies]
-jarvais = ">=0.13.1, <0.14"
+fastapi = ">=0.104.1,<0.105"
+uvicorn = { version = ">=0.24.0,<0.25", extras = ["standard"] }
+python-multipart = ">=0.0.6,<0.1"
+pydantic = ">=2.5.0,<3"
+slowapi = ">=0.1.9,<0.2"
+jarvais = "*"
+umap-learn = ">=0.5.5,<0.6"
 
-[feature.production.pypi-dependencies]
-redis = "*"
 
-[feature.production.tasks]
-launch = "python src/app_production.py"
 
-[feature.production.dependencies]
-flask_cors = ">=4.0.0,<5"
 
-[environments]
-production = ["production"]

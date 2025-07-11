@@ -28,11 +28,27 @@ RUN pixi install
 # Copy application source code
 COPY src/ ./src/
 
+# Copy startup script
+COPY run_fastapi.py ./
+
+# Copy test script
+COPY test_fastapi.py ./
+
 # Copy previously uploaded datasets
 COPY uploads/ ./uploads/
 
-# Expose the port that Flask runs on
+# Create uploads directory if it doesn't exist
+RUN mkdir -p uploads
+
+# Expose the port that FastAPI runs on
 EXPOSE 5000
 
-# Use pixi to run the application
-CMD ["/bin/bash"]
+# Set default environment variables
+ENV APP_FILE=main_production
+ENV APP_NAME=app
+ENV HOST=0.0.0.0
+ENV PORT=5000
+ENV LOG_LEVEL=info
+
+# Use pixi to run the FastAPI application
+CMD ["pixi", "run", "prod"]
