@@ -31,12 +31,6 @@ COPY src/ ./src/
 # Copy startup script
 COPY run_fastapi.py ./
 
-# Copy test script
-COPY test_fastapi.py ./
-
-# Copy previously uploaded datasets
-COPY uploads/ ./uploads/
-
 # Create uploads directory if it doesn't exist
 RUN mkdir -p uploads
 
