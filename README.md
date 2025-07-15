@@ -99,6 +99,17 @@ uvicorn src.main:app --host 0.0.0.0 --port 5000 --reload
 | `LOG_LEVEL` | `info` | Logging level |
 
 
+### Available Tasks
+
+| Task | Command | Description |
+|------|---------|-------------|
+| `dev` | `pixi run dev` | Start development server |
+| `debug` | `pixi run debug` | Start with auto-reload and debug logging |
+| `test` | `pixi run test` | Run test suite |
+| `prod` | `pixi run prod` | Start production server |
+| `dev-reload` | `pixi run dev-reload` | Development with auto-reload |
+| `docs` | `pixi run docs` | Echo CLI to help user find API docs |
+
 ## Docker Support
 
 The existing Dockerfile should work with the FastAPI version. You can build and run:

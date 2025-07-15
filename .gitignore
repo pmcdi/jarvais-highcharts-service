@@ -5,6 +5,7 @@ __pycache__/
 archive/
 uploads/
 redis_data/
+*.json
 
 # C extensions
 *.so

@@ -14,6 +14,10 @@ prod = "PRODUCTION=true APP_FILE=main python run_fastapi.py"
 dev-reload = "RELOAD=true LOG_LEVEL=debug python run_fastapi.py"
 docs = "echo 'API docs available at http://localhost:5000/docs'"
 
+[activation.env]
+REDIS_HOST="localhost"
+REDIS_PORT="6379"
+
 [dependencies]
 python = "3.12.*"
 redis-py = ">=5.0.1,<6"
