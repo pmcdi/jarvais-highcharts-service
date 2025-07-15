@@ -2,18 +2,30 @@ import logging
 import traceback
 from typing import Optional
 
-from fastapi import APIRouter, HTTPException, Query, Path
+from fastapi import APIRouter, HTTPException, Query, Path, Request
 
 from ..plot import get_corr_heatmap_json, get_freq_heatmaps_json, get_pie_chart_json, get_umap_json, get_violin_plot_json, get_box_plot_json, get_grouped_box_plot_json
 from ..storage import storage_manager
+from ..config import settings
 
 logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/visualization", tags=["visualization"])
 
+# Rate limiting setup (only for production)
+if settings.production:
+    from slowapi import Limiter
+    from slowapi.util import get_remote_address
+    
+    limiter = Limiter(key_func=get_remote_address)
+else:
+    limiter = None
+
 
 @router.get("/{analyzer_id}/correlation_heatmap")
+@limiter.limit(settings.rate_limit_visualization) if limiter else lambda f: f
 async def get_correlation_heatmap(
+    request: Request,
     analyzer_id: str = Path(..., description="Unique identifier for the analyzer instance"),
     method: Optional[str] = Query(None, description="Method to use for generating the heatmap (e.g., 'pearson', 'spearman')")
 ):
@@ -45,7 +57,9 @@ async def get_correlation_heatmap(
 
 
 @router.get("/{analyzer_id}/frequency_heatmap")
+@limiter.limit(settings.rate_limit_visualization) if limiter else lambda f: f
 async def get_frequency_heatmap(
+    request: Request,
     analyzer_id: str = Path(..., description="Unique identifier for the analyzer instance"),
     column1: str = Query(..., description="First categorical column"),
     column2: str = Query(..., description="Second categorical column")
@@ -81,7 +95,9 @@ async def get_frequency_heatmap(
 
 
 @router.get("/{analyzer_id}/pie_chart")
+@limiter.limit(settings.rate_limit_visualization) if limiter else lambda f: f
 async def get_pie_chart(
+    request: Request,
     analyzer_id: str = Path(..., description="Unique identifier for the analyzer instance"),
     var: str = Query(..., description="The variable to plot")
 ):
@@ -111,7 +127,9 @@ async def get_pie_chart(
 
 
 @router.get("/{analyzer_id}/umap_scatterplot")
+@limiter.limit(settings.rate_limit_visualization) if limiter else lambda f: f
 async def get_umap_plot(
+    request: Request,
     analyzer_id: str = Path(..., description="Unique identifier for the analyzer instance"),
     hue: Optional[str] = Query(None, description="Column to use for color coding")
 ):
@@ -148,7 +166,9 @@ async def get_umap_plot(
         raise HTTPException(status_code=500, detail=f"Failed to generate UMAP plot: {str(e)}") 
 
 @router.get("/{analyzer_id}/violin_plot")
+@limiter.limit(settings.rate_limit_visualization) if limiter else lambda f: f
 async def get_violin_plot(
+    request: Request,
     analyzer_id: str = Path(..., description="Unique identifier for the analyzer instance"),
     var_categorical: str = Query(..., description="Categorical variable"),
     var_continuous: str = Query(..., description="Continuous variable")
@@ -179,7 +199,9 @@ async def get_violin_plot(
 
 
 @router.get("/{analyzer_id}/box_plot")
+@limiter.limit(settings.rate_limit_visualization) if limiter else lambda f: f
 async def get_box_plot(
+    request: Request,
     analyzer_id: str = Path(..., description="Unique identifier for the analyzer instance"),
     var_categorical: str = Query(..., description="Categorical variable"),
     var_continuous: str = Query(..., description="Continuous variable")
@@ -218,7 +240,9 @@ async def get_box_plot(
 
 
 @router.get("/{analyzer_id}/grouped_box_plot")
+@limiter.limit(settings.rate_limit_visualization) if limiter else lambda f: f
 async def get_grouped_box_plot(
+    request: Request,
     analyzer_id: str = Path(..., description="Unique identifier for the analyzer instance"),
     var_categorical: str = Query(..., description="Categorical variable"),
     var_continuous: str = Query(..., description="Continuous variable"),

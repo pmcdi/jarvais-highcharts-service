@@ -3,7 +3,7 @@ import uuid
 import logging
 from datetime import datetime, timedelta, timezone
 
-from fastapi import APIRouter, File, UploadFile, HTTPException
+from fastapi import APIRouter, File, UploadFile, HTTPException, Request
 import pandas as pd
 
 from jarvais import Analyzer
@@ -14,6 +14,15 @@ from ..models import AnalyzerInfo
 logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/upload", tags=["upload"])
+
+# Rate limiting setup (only for production)
+if settings.production:
+    from slowapi import Limiter
+    from slowapi.util import get_remote_address
+    
+    limiter = Limiter(key_func=get_remote_address)
+else:
+    limiter = None
 
 
 def allowed_file(filename: str) -> bool:
@@ -48,11 +57,13 @@ def get_umap(data: pd.DataFrame, continuous_columns: list) -> pd.DataFrame:
 
 
 @router.post("", response_model=AnalyzerInfo, status_code=201)
-async def upload_csv(file: UploadFile = File(...)):
+@limiter.limit(settings.rate_limit_upload) if limiter else lambda f: f
+async def upload_csv(request: Request, file: UploadFile = File(...)):
     """
     Upload CSV file and create an Analyzer instance.
     
     Args:
+        request: FastAPI request object (required for rate limiting)
         file: CSV file to upload
         
     Returns:

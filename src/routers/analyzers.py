@@ -1,18 +1,29 @@
 import logging
 from datetime import datetime
 
-from fastapi import APIRouter, HTTPException, Path
+from fastapi import APIRouter, HTTPException, Path, Request
 
 from ..storage import storage_manager
 from ..models import AnalyzerInfo, AnalyzerList, AnalyzerListItem, SuccessResponse
+from ..config import settings
 
 logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/analyzers", tags=["analyzers"])
 
+# Rate limiting setup (only for production)
+if settings.production:
+    from slowapi import Limiter
+    from slowapi.util import get_remote_address
+    
+    limiter = Limiter(key_func=get_remote_address)
+else:
+    limiter = None
+
 
 @router.get("", response_model=AnalyzerList)
-async def list_analyzers():
+@limiter.limit(settings.rate_limit_general) if limiter else lambda f: f
+async def list_analyzers(request: Request):
     """List all active analyzer sessions."""
     analyzer_ids = storage_manager.list_analyzer_ids()
     
@@ -25,7 +36,9 @@ async def list_analyzers():
 
 
 @router.get("/{analyzer_id}", response_model=AnalyzerInfo)
+@limiter.limit(settings.rate_limit_general) if limiter else lambda f: f
 async def analyzer_info(
+    request: Request,
     analyzer_id: str = Path(..., description="Unique identifier for the analyzer instance")
 ):
     """Get information about a specific analyzer."""

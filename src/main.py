@@ -82,19 +82,6 @@ def apply_rate_limit(rate_limit_str: str):
         return func
     return decorator
 
-# Apply rate limiting to routers if in production
-if settings.production and limiter:
-    for router_module in [upload, visualization, analyzers, health]:
-        for route in router_module.router.routes:
-            if hasattr(route, 'endpoint'):
-                # Apply rate limiting based on route path
-                if route.path.startswith('/upload'):
-                    route.endpoint = limiter.limit(settings.rate_limit_upload)(route.endpoint)
-                elif route.path.startswith('/visualization'):
-                    route.endpoint = limiter.limit(settings.rate_limit_visualization)(route.endpoint)
-                else:
-                    route.endpoint = limiter.limit(settings.rate_limit_general)(route.endpoint)
-
 # Include routers
 app.include_router(upload.router)
 app.include_router(visualization.router)
