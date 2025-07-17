@@ -4,7 +4,7 @@ from typing import Optional
 
 from fastapi import APIRouter, HTTPException, Query, Path, Request
 
-from ..plot import get_corr_heatmap_json, get_freq_heatmaps_json, get_pie_chart_json, get_umap_json, get_violin_plot_json, get_box_plot_json, get_grouped_box_plot_json
+from ..plot import get_corr_heatmap_json, get_freq_heatmaps_json, get_pie_chart_json, get_umap_json, get_violin_plot_json, get_box_plot_json #, get_grouped_box_plot_json
 from ..storage import storage_manager
 from ..config import settings
 
@@ -239,47 +239,47 @@ async def get_box_plot(
         raise HTTPException(status_code=500, detail=f"Failed to generate box plot: {str(e)}")
 
 
-@router.get("/{analyzer_id}/grouped_box_plot")
-@limiter.limit(settings.rate_limit_visualization) if limiter else lambda f: f
-async def get_grouped_box_plot(
-    request: Request,
-    analyzer_id: str = Path(..., description="Unique identifier for the analyzer instance"),
-    var_categorical: str = Query(..., description="Categorical variable"),
-    var_continuous: str = Query(..., description="Continuous variable"),
-    var_grouping: str = Query(..., description="Grouping variable")
-):
-    """
-    Get grouped box plot for specific variables.
+# @router.get("/{analyzer_id}/grouped_box_plot")
+# @limiter.limit(settings.rate_limit_visualization) if limiter else lambda f: f
+# async def get_grouped_box_plot(
+#     request: Request,
+#     analyzer_id: str = Path(..., description="Unique identifier for the analyzer instance"),
+#     var_categorical: str = Query(..., description="Categorical variable"),
+#     var_continuous: str = Query(..., description="Continuous variable"),
+#     var_grouping: str = Query(..., description="Grouping variable")
+# ):
+#     """
+#     Get grouped box plot for specific variables.
     
-    Args:
-        analyzer_id: Unique identifier for the analyzer instance
-        var_categorical: Categorical variable (x-axis)
-        var_continuous: Continuous variable (y-axis)
-        var_grouping: Grouping variable (creates multiple series)
+#     Args:
+#         analyzer_id: Unique identifier for the analyzer instance
+#         var_categorical: Categorical variable (x-axis)
+#         var_continuous: Continuous variable (y-axis)
+#         var_grouping: Grouping variable (creates multiple series)
         
-    Returns:
-        JSON response with chart data
-    """
+#     Returns:
+#         JSON response with chart data
+#     """
     
-    analyzer = storage_manager.get_analyzer(analyzer_id)
-    if not analyzer:
-        raise HTTPException(status_code=404, detail="Analyzer not found")
-    if var_categorical not in analyzer.data.columns:
-        raise HTTPException(status_code=400, detail=f"Categorical variable '{var_categorical}' not found in data")
-    if var_continuous not in analyzer.data.columns:
-        raise HTTPException(status_code=400, detail=f"Continuous variable '{var_continuous}' not found in data")
-    if var_grouping not in analyzer.data.columns:
-        raise HTTPException(status_code=400, detail=f"Grouping variable '{var_grouping}' not found in data")
+#     analyzer = storage_manager.get_analyzer(analyzer_id)
+#     if not analyzer:
+#         raise HTTPException(status_code=404, detail="Analyzer not found")
+#     if var_categorical not in analyzer.data.columns:
+#         raise HTTPException(status_code=400, detail=f"Categorical variable '{var_categorical}' not found in data")
+#     if var_continuous not in analyzer.data.columns:
+#         raise HTTPException(status_code=400, detail=f"Continuous variable '{var_continuous}' not found in data")
+#     if var_grouping not in analyzer.data.columns:
+#         raise HTTPException(status_code=400, detail=f"Grouping variable '{var_grouping}' not found in data")
     
-    try:
-        chart_json = get_grouped_box_plot_json(
-            analyzer.data,
-            var_categorical=var_categorical,
-            var_continuous=var_continuous,
-            var_grouping=var_grouping
-        )
-        return chart_json
-    except Exception as e:
-        logger.error(f"Failed to generate grouped box plot: {str(e)}")
-        traceback.print_exc()
-        raise HTTPException(status_code=500, detail=f"Failed to generate grouped box plot: {str(e)}")
+#     try:
+#         chart_json = get_grouped_box_plot_json(
+#             analyzer.data,
+#             var_categorical=var_categorical,
+#             var_continuous=var_continuous,
+#             var_grouping=var_grouping
+#         )
+#         return chart_json
+#     except Exception as e:
+#         logger.error(f"Failed to generate grouped box plot: {str(e)}")
+#         traceback.print_exc()
+#         raise HTTPException(status_code=500, detail=f"Failed to generate grouped box plot: {str(e)}")
