@@ -12,9 +12,11 @@ test = "python test_fastapi.py"
 launch = "PRODUCTION=true APP_FILE=main python run_fastapi.py"
 prod = "PRODUCTION=true APP_FILE=main python run_fastapi.py"
 dev-reload = "RELOAD=true LOG_LEVEL=debug python run_fastapi.py"
-docs = "echo 'API docs available at http://localhost:5000/docs'"
+docs = "echo 'API docs available at http://localhost:8888/docs'"
 
 [activation.env]
+HOST="localhost"
+PORT="8888"
 REDIS_HOST="localhost"
 REDIS_PORT="6379"
 
@@ -29,8 +31,9 @@ uvicorn = { version = ">=0.24.0,<0.25", extras = ["standard"] }
 python-multipart = ">=0.0.6,<0.1"
 pydantic = ">=2.5.0,<3"
 slowapi = ">=0.1.9,<0.2"
-jarvais = "*"
 umap-learn = ">=0.5.5,<0.6"
+typing_extensions = ">=4.14.1,<5"
+jarvais = ">=0.20.0, <0.21"
 
 
 
