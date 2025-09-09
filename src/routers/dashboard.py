@@ -52,8 +52,35 @@ async def get_dashboard(
         # Generate dashboard with default settings
         # The dashboard module should have been run during analyzer.run() in upload
         dashboard_json = get_dashboard_json(analyzer)
+        print("\n\nDASHBOARD RESULTS RECEIVED!!!")
+
+        import json
+        import numpy as np
         
-        return dashboard_json
+        def convert_numpy_types(obj):
+            """Convert numpy types to JSON serializable Python types."""
+            if isinstance(obj, np.bool_):
+                return bool(obj)
+            elif isinstance(obj, np.integer):
+                return int(obj)
+            elif isinstance(obj, np.floating):
+                return float(obj)
+            elif isinstance(obj, np.ndarray):
+                return obj.tolist()
+            elif isinstance(obj, dict):
+                return {key: convert_numpy_types(value) for key, value in obj.items()}
+            elif isinstance(obj, list):
+                return [convert_numpy_types(item) for item in obj]
+            else:
+                return obj
+        
+        # Convert numpy types before JSON serialization
+        serializable_dashboard_json = convert_numpy_types(dashboard_json)
+        
+        with open(f"dashboard_{analyzer_id}.json", "w") as f:
+            json.dump(serializable_dashboard_json, f, indent=2)
+        
+        return serializable_dashboard_json
         
     except Exception as e:
         logger.error(f"Failed to generate dashboard: {str(e)}")

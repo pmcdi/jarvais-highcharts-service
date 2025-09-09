@@ -6,6 +6,7 @@ archive/
 uploads/
 redis_data/
 *.json
+node_modules/
 
 # C extensions
 *.so

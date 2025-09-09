@@ -98,7 +98,7 @@ def test_dashboard():
                     significant = chart['_metadata'].get('significant', False)
                     
                     sig_marker = "⭐" if significant else ""
-                    print(f"   Chart {i+1}: {chart_type} - {cont_var} by {cat_var} (p={p_value:.4f if isinstance(p_value, float) else p_value}) {sig_marker}")
+                    print(f"   Chart {i+1}: {chart_type} - {cont_var} by {cat_var} (p={p_value:.3E if isinstance(p_value, float) else p_value}) {sig_marker}")
                 elif chart_type == 'umap_scatterplot':
                     hue_var = chart['_metadata'].get('hue_variable', 'None')
                     print(f"   Chart {i+1}: UMAP colored by {hue_var}")

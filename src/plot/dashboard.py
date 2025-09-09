@@ -9,7 +9,6 @@ import numpy as np
 from jarvais import Analyzer
 
 from .violinplot import get_violin_plot_json
-from .boxplot import get_box_plot_json
 from .umap import get_umap_json
 
 logger = logging.getLogger(__name__)
@@ -72,43 +71,11 @@ def get_dashboard_json(analyzer: Analyzer) -> List[Dict[str, Any]]:
             logger.warning(f"Variables {cat_var} or {cont_var} not found in data")
             continue
         
-        try:
-            # Generate box plot with statistical info in title
-            box_title = f"{cont_var} by {cat_var}"
-            if p_value is not None:
-                box_title += f" (p={p_value:.4f}, {test_type}"
-                if effect_size is not None:
-                    box_title += f", effect={effect_size:.3f}"
-                box_title += ")"
-            
-            box_plot = get_box_plot_json(
-                analyzer.input_data,
-                var_categorical=cat_var,
-                var_continuous=cont_var
-            )
-            # Add custom title with statistical significance
-            if isinstance(box_plot, dict) and 'title' in box_plot:
-                box_plot['title']['text'] = box_title
-            elif isinstance(box_plot, dict):
-                box_plot['title'] = {'text': box_title}
-            
-            # Add metadata about significance
-            box_plot['_metadata'] = {
-                'type': 'box_plot',
-                'categorical_var': cat_var,
-                'continuous_var': cont_var,
-                'p_value': p_value,
-                'effect_size': effect_size,
-                'test_type': test_type,
-                'significant': result.get('significant', False)
-            }
-            
-            charts.append(box_plot)
-            
+        try:            
             # Generate violin plot with statistical info in title
             violin_title = f"{cont_var} distribution by {cat_var}"
             if p_value is not None:
-                violin_title += f" (p={p_value:.4f})"
+                violin_title += f" (p={p_value:.3E})"
             
             violin_plot = get_violin_plot_json(
                 analyzer.input_data,
@@ -138,6 +105,8 @@ def get_dashboard_json(analyzer: Analyzer) -> List[Dict[str, Any]]:
             logger.error(f"Failed to generate plots for {cat_var} vs {cont_var}: {e}")
             continue
     
+    print(analyzer)
+
     # Add UMAP plot if available
     if hasattr(analyzer, 'umap_data') and analyzer.umap_data is not None:
         try:
@@ -186,12 +155,13 @@ def get_dashboard_json(analyzer: Analyzer) -> List[Dict[str, Any]]:
                 'type': 'umap_scatterplot',
                 'hue_variable': hue_var
             }
-            
+        
             charts.append(umap_plot)
             
         except Exception as e:
             logger.error(f"Failed to generate UMAP plot: {e}")
     
+    print("logger")
     # Log summary
     logger.info(f"Generated {len(charts)} dashboard charts from {len(significant_results)} significant results")
     
