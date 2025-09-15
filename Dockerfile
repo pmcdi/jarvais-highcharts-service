@@ -8,8 +8,11 @@ ENV PYTHONUNBUFFERED=1
 RUN apt-get update && apt-get install -y \
     curl \
     wget \
+    git \
     build-essential \
     libglib2.0-0 \
+    libblas-dev \
+    liblapack-dev \
     && rm -rf /var/lib/apt/lists/*
 
 # Install pixi
@@ -38,7 +41,8 @@ RUN mkdir -p uploads
 EXPOSE 5000
 
 # Set default environment variables
-ENV APP_FILE=main_production
+ENV PRODUCTION=true
+ENV APP_FILE=main
 ENV APP_NAME=app
 ENV HOST=0.0.0.0
 ENV PORT=5000

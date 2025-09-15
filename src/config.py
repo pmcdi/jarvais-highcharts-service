@@ -13,7 +13,7 @@ class Settings(BaseModel):
     
     # Server settings
     host: str = "0.0.0.0"
-    port: int = 5000
+    port: int = 8888
     log_level: str = "info"
     
     # Production mode toggle
@@ -25,7 +25,7 @@ class Settings(BaseModel):
     allowed_extensions: Set[str] = {"csv"}
     
     # Redis settings
-    redis_host: str = "localhost"
+    redis_host: str = "redis"
     redis_port: int = 6379
     redis_db: int = 0
     session_ttl: int = 3600  # 1 hour
@@ -44,11 +44,11 @@ class Settings(BaseModel):
         env_values = {
             'production': os.environ.get('PRODUCTION', 'false').lower() == 'true',
             'host': os.environ.get('HOST', '0.0.0.0'),
-            'port': int(os.environ.get('PORT', 5000)),
+            'port': int(os.environ.get('PORT', 8888)),
             'log_level': os.environ.get('LOG_LEVEL', 'info'),
             'max_content_length': int(os.environ.get('MAX_CONTENT_LENGTH', 100 * 1024 * 1024)),
             'upload_folder': os.environ.get('UPLOAD_FOLDER', 'uploads'),
-            'redis_host': os.environ.get('REDIS_HOST', 'localhost'),
+            'redis_host': os.environ.get('REDIS_HOST', 'redis'),
             'redis_port': int(os.environ.get('REDIS_PORT', 6379)),
             'redis_db': int(os.environ.get('REDIS_DB', 0)),
             'session_ttl': int(os.environ.get('SESSION_TTL', 3600)),

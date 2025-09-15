@@ -118,12 +118,16 @@ class StorageManager:
                 host=settings.redis_host,
                 port=settings.redis_port,
                 db=settings.redis_db,
-                decode_responses=False
+                decode_responses=False,
+                socket_connect_timeout=5,
+                socket_timeout=5,
+                retry_on_timeout=True,
+                health_check_interval=30
             )
             redis_client.ping()
             self.backend = RedisStorage(redis_client)
             self.use_redis = True
-            logger.info("Connected to Redis storage")
+            logger.info(f"Connected to Redis storage at {settings.redis_host}:{settings.redis_port}")
         except Exception as e:
             self.backend = MemoryStorage()
             self.use_redis = False
