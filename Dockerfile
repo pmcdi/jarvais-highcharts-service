@@ -42,7 +42,7 @@ ENV PRODUCTION=true
 ENV APP_FILE=main
 ENV APP_NAME=app
 ENV HOST=0.0.0.0
-ENV PORT=5000
+ENV PORT=8888
 ENV LOG_LEVEL=info
 
 # Use pixi to run the FastAPI application
