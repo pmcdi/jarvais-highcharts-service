@@ -9,9 +9,6 @@ This file provides guidance to WARP (warp.dev) when working with code in this re
 # Start development server with debug logging (PORT=8888 by default in pixi.toml)
 pixi run dev
 
-# Development server with auto-reload enabled
-pixi run dev-reload
-
 # Production server mode
 pixi run prod
 ```

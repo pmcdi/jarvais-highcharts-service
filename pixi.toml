@@ -8,10 +8,8 @@ version = "1.0.0"
 
 [tasks]
 dev = "RELOAD=true LOG_LEVEL=debug python run_fastapi.py"
-test = "python test_fastapi.py"
-launch = "PRODUCTION=true APP_FILE=main python run_fastapi.py"
 prod = "PRODUCTION=true APP_FILE=main python run_fastapi.py"
-dev-reload = "RELOAD=true LOG_LEVEL=debug python run_fastapi.py"
+test = "python test_fastapi.py"
 docs = "echo 'API docs available at http://localhost:8888/docs'"
 
 [activation.env]

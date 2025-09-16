@@ -37,9 +37,6 @@ COPY run_fastapi.py ./
 # Create uploads directory if it doesn't exist
 RUN mkdir -p uploads
 
-# Expose the port that FastAPI runs on
-EXPOSE 5000
-
 # Set default environment variables
 ENV PRODUCTION=true
 ENV APP_FILE=main
