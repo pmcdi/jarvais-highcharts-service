@@ -4,7 +4,7 @@ channels = ["conda-forge"]
 description = "Microservice to return jarvAIs Analyzer results compatible with HighCharts using FastAPI"
 name = "jarvais-highcharts-service"
 platforms = ["osx-64", "linux-64", "win-64", "linux-aarch64"]
-version = "1.0.0"
+version = "1.2.0"
 
 [tasks]
 dev = "RELOAD=true LOG_LEVEL=debug python run_fastapi.py"
