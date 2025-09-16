@@ -57,7 +57,7 @@ def main():
     print("🧪 Testing FastAPI Jarvais Highcharts Service...")
     print("=" * 50)
     
-    base_url = os.environ.get('TEST_BASE_URL', 'http://localhost:5000')
+    base_url = os.environ.get('TEST_BASE_URL', 'http://localhost:8888')
     print(f"Testing against: {base_url}")
     print()
     
