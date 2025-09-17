@@ -114,7 +114,7 @@ jobs:
 
     - name: Install security scanning tools
       run: |
-        pixi add bandit safety
+        pixi add bandit safety --pypi
 
     - name: Run bandit security scan
       run: |
