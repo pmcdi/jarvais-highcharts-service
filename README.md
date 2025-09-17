@@ -93,7 +93,7 @@ uvicorn src.main:app --host 0.0.0.0 --port 5000 --reload
 | `MAX_CONTENT_LENGTH` | `104857600` | Max file size (100MB) |
 | `ALLOWED_ORIGINS` | `*` | CORS allowed origins |
 | `TRUSTED_HOSTS` | - | Trusted host middleware |
-| `PORT` | `5000` | Server port |
+| `PORT` | `8888` | Server port |
 | `HOST` | `0.0.0.0` | Server host |
 | `RELOAD` | `false` | Enable auto-reload |
 | `LOG_LEVEL` | `info` | Logging level |
@@ -104,10 +104,8 @@ uvicorn src.main:app --host 0.0.0.0 --port 5000 --reload
 | Task | Command | Description |
 |------|---------|-------------|
 | `dev` | `pixi run dev` | Start development server |
-| `debug` | `pixi run debug` | Start with auto-reload and debug logging |
-| `test` | `pixi run test` | Run test suite |
 | `prod` | `pixi run prod` | Start production server |
-| `dev-reload` | `pixi run dev-reload` | Development with auto-reload |
+| `test` | `pixi run test` | Run test suite |
 | `docs` | `pixi run docs` | Echo CLI to help user find API docs |
 
 ## Docker Support

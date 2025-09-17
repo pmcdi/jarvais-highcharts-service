@@ -5,21 +5,13 @@ from fastapi import APIRouter, Request
 from ..config import settings
 from ..storage import storage_manager
 from ..models import HealthStatus
+from ..utils.rate_limit import apply_rate_limit
 
 router = APIRouter(prefix="/health", tags=["health"])
 
-# Rate limiting setup (only for production)
-if settings.production:
-    from slowapi import Limiter
-    from slowapi.util import get_remote_address
-    
-    limiter = Limiter(key_func=get_remote_address)
-else:
-    limiter = None
-
 
 @router.get("", response_model=HealthStatus)
-@limiter.limit(settings.rate_limit_general) if limiter else lambda f: f
+@apply_rate_limit(settings.rate_limit_general)
 async def health_check(request: Request):
     """Health check endpoint."""
     storage_health = storage_manager.health_check()

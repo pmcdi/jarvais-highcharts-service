@@ -7,22 +7,15 @@ from fastapi import APIRouter, File, UploadFile, HTTPException, Request
 import pandas as pd
 
 from jarvais import Analyzer
+from jarvais.analyzer.modules import DashboardModule
 from ..config import settings
 from ..storage import storage_manager
 from ..models import AnalyzerInfo
+from ..utils.rate_limit import apply_rate_limit
 
 logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/upload", tags=["upload"])
-
-# Rate limiting setup (only for production)
-if settings.production:
-    from slowapi import Limiter
-    from slowapi.util import get_remote_address
-    
-    limiter = Limiter(key_func=get_remote_address)
-else:
-    limiter = None
 
 
 def allowed_file(filename: str) -> bool:
@@ -57,7 +50,7 @@ def get_umap(data: pd.DataFrame, continuous_columns: list) -> pd.DataFrame:
 
 
 @router.post("", response_model=AnalyzerInfo, status_code=201)
-@limiter.limit(settings.rate_limit_upload) if limiter else lambda f: f
+@apply_rate_limit(settings.rate_limit_upload)
 async def upload_csv(request: Request, file: UploadFile = File(...)):
     """
     Upload CSV file and create an Analyzer instance.
@@ -92,11 +85,13 @@ async def upload_csv(request: Request, file: UploadFile = File(...)):
         
         # Initialize Analyzer
         analyzer = Analyzer(df, settings.upload_folder)
-        
+        analyzer.run()
+
         # Calculate UMAP of continuous variables
         if analyzer.settings.continuous_columns:
             # Ugly hack to get UMAP data into the analyzer. It allows UMAP to be saved in Redis.
-            analyzer.umap_data = get_umap(analyzer.data, continuous_columns=analyzer.settings.continuous_columns) # type: ignore
+            analyzer.umap_data = get_umap(analyzer.data, 
+                                          continuous_columns=analyzer.settings.continuous_columns) # type: ignore
         
         # Store analyzer instance
         storage_manager.store_analyzer(analyzer_id, analyzer)
@@ -114,4 +109,4 @@ async def upload_csv(request: Request, file: UploadFile = File(...)):
         
     except Exception as e:
         logger.error(f"Failed to process file: {str(e)}")
-        raise HTTPException(status_code=500, detail=f"Failed to process file: {str(e)}") 
+        raise HTTPException(status_code=500, detail=f"Failed to process file: {str(e)}")

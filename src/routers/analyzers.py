@@ -6,23 +6,15 @@ from fastapi import APIRouter, HTTPException, Path, Request
 from ..storage import storage_manager
 from ..models import AnalyzerInfo, AnalyzerList, AnalyzerListItem, SuccessResponse
 from ..config import settings
+from ..utils.rate_limit import apply_rate_limit
 
 logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/analyzers", tags=["analyzers"])
 
-# Rate limiting setup (only for production)
-if settings.production:
-    from slowapi import Limiter
-    from slowapi.util import get_remote_address
-    
-    limiter = Limiter(key_func=get_remote_address)
-else:
-    limiter = None
-
 
 @router.get("", response_model=AnalyzerList)
-@limiter.limit(settings.rate_limit_general) if limiter else lambda f: f
+@apply_rate_limit(settings.rate_limit_general)
 async def list_analyzers(request: Request):
     """List all active analyzer sessions."""
     analyzer_ids = storage_manager.list_analyzer_ids()
@@ -36,7 +28,7 @@ async def list_analyzers(request: Request):
 
 
 @router.get("/{analyzer_id}", response_model=AnalyzerInfo)
-@limiter.limit(settings.rate_limit_general) if limiter else lambda f: f
+@apply_rate_limit(settings.rate_limit_general)
 async def analyzer_info(
     request: Request,
     analyzer_id: str = Path(..., description="Unique identifier for the analyzer instance")

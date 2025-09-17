@@ -1,29 +1,40 @@
-version: '3.8'
-
 services:
   jarvais-api:
+    build: .
     image: jarvais-api:latest
     ports:
-      - "5000:5000"
+      - "8888:8888"
     environment:
       - REDIS_HOST=redis
       - REDIS_PORT=6379
       - REDIS_DB=0
       - SESSION_TTL=3600
     depends_on:
-      - redis
+      redis:
+        condition: service_healthy
     volumes:
       - ./uploads:/app/uploads
     restart: unless-stopped
-    command: ["pixi", "run", "launch"]
+    networks:
+      - jarvais-network
 
   redis:
     image: redis:7-alpine
-    ports:
-      - "6379:6379"
+    command: redis-server --appendonly yes
     volumes:
       - ./redis_data:/data
     restart: unless-stopped
+    networks:
+      - jarvais-network
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+networks:
+  jarvais-network:
+    driver: bridge
 
 volumes:
   redis_data:

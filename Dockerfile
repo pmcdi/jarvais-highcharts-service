@@ -8,8 +8,11 @@ ENV PYTHONUNBUFFERED=1
 RUN apt-get update && apt-get install -y \
     curl \
     wget \
+    git \
     build-essential \
     libglib2.0-0 \
+    libblas-dev \
+    liblapack-dev \
     && rm -rf /var/lib/apt/lists/*
 
 # Install pixi
@@ -34,14 +37,12 @@ COPY run_fastapi.py ./
 # Create uploads directory if it doesn't exist
 RUN mkdir -p uploads
 
-# Expose the port that FastAPI runs on
-EXPOSE 5000
-
 # Set default environment variables
-ENV APP_FILE=main_production
+ENV PRODUCTION=true
+ENV APP_FILE=main
 ENV APP_NAME=app
 ENV HOST=0.0.0.0
-ENV PORT=5000
+ENV PORT=8888
 ENV LOG_LEVEL=info
 
 # Use pixi to run the FastAPI application

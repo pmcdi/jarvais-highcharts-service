@@ -8,7 +8,7 @@ from fastapi.middleware.trustedhost import TrustedHostMiddleware
 
 from .config import settings
 from .storage import storage_manager
-from .routers import upload, visualization, analyzers, health
+from .routers import upload, visualization, analyzers, health, dashboard
 
 # Configure logging
 logging.basicConfig(
@@ -86,6 +86,7 @@ def apply_rate_limit(rate_limit_str: str):
 app.include_router(upload.router)
 app.include_router(visualization.router)
 app.include_router(analyzers.router)
+app.include_router(dashboard.router)
 app.include_router(health.router)
 
 
@@ -96,4 +97,4 @@ if __name__ == "__main__":
         host=settings.host,
         port=settings.port,
         log_level=settings.log_level
-    ) 
+    )
