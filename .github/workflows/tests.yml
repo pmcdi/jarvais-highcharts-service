@@ -31,6 +31,19 @@ jobs:
       with:
         pixi-version: v0.55.0
         cache: true
+    
+    - name: Start server in background
+      env:
+        REDIS_HOST: localhost
+        REDIS_PORT: 6379
+        REDIS_DB: 1
+      run: |
+        pixi run dev &
+        sleep 10  # Give server time to start
+
+    - name: Wait for server to be ready
+      run: |
+        timeout 60 bash -c 'until curl -f http://localhost:8888/health; do sleep 2; done'
 
     - name: Run tests
       env:
