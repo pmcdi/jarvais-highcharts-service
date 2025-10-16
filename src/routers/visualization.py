@@ -40,7 +40,7 @@ async def get_correlation_heatmap(
             raise HTTPException(status_code=404, detail="Analyzer not found")
         
         # Generate correlation heatmap
-        chart_json = get_corr_heatmap_json(analyzer.data[analyzer.settings.continuous_columns], method=method or "pearson") # type: ignore
+        chart_json = get_corr_heatmap_json(analyzer.input_data[analyzer.settings.continuous_columns], method=method or "pearson") # type: ignore
         return chart_json
         
     except Exception as e:
@@ -79,7 +79,7 @@ async def get_frequency_heatmap(
 
     try:
         # Generate frequency heatmap
-        chart_json = get_freq_heatmaps_json(analyzer.data, column1, column2)
+        chart_json = get_freq_heatmaps_json(analyzer.input_data, column1, column2)
         return chart_json
     except Exception as e:
         logger.error(f"Failed to generate frequency heatmap: {str(e)}")
@@ -111,7 +111,7 @@ async def get_pie_chart(
         raise HTTPException(status_code=404, detail="Analyzer not found")
 
     try:
-        chart_json = get_pie_chart_json(analyzer.data, var)
+        chart_json = get_pie_chart_json(analyzer.input_data, var)
         return chart_json
     except Exception as e:
         logger.error(f"Failed to generate pie chart: {str(e)}")
@@ -145,11 +145,11 @@ async def get_umap_plot(
     if not hasattr(analyzer, 'umap_data') or analyzer.umap_data is None: # type: ignore
         raise HTTPException(status_code=400, detail="UMAP data not available for this analyzer")
     
-    try:        
+    try:
         hue_data = None
-        if hue and hue in analyzer.data.columns:
-            hue_data = analyzer.data[hue]
-        
+        if hue and hue in analyzer.input_data.columns:
+            hue_data = analyzer.input_data[hue]
+
         chart_json = get_umap_json(analyzer.umap_data, hue_data) # type: ignore
         return chart_json
     except Exception as e:
@@ -172,14 +172,14 @@ async def get_violin_plot(
     analyzer = storage_manager.get_analyzer(analyzer_id)
     if not analyzer:
         raise HTTPException(status_code=404, detail="Analyzer not found")
-    if var_categorical not in analyzer.data.columns:
+    if var_categorical not in analyzer.input_data.columns:
         raise HTTPException(status_code=400, detail=f"Categorical variable '{var_categorical}' not found in data")
-    if var_continuous not in analyzer.data.columns:
+    if var_continuous not in analyzer.input_data.columns:
         raise HTTPException(status_code=400, detail=f"Continuous variable '{var_continuous}' not found in data")
     
     try:
         chart_json = get_violin_plot_json(
-            analyzer.data,
+            analyzer.input_data,
             var_categorical=var_categorical,
             var_continuous=var_continuous
         )
@@ -213,14 +213,14 @@ async def get_box_plot(
     analyzer = storage_manager.get_analyzer(analyzer_id)
     if not analyzer:
         raise HTTPException(status_code=404, detail="Analyzer not found")
-    if var_categorical not in analyzer.data.columns:
+    if var_categorical not in analyzer.input_data.columns:
         raise HTTPException(status_code=400, detail=f"Categorical variable '{var_categorical}' not found in data")
-    if var_continuous not in analyzer.data.columns:
+    if var_continuous not in analyzer.input_data.columns:
         raise HTTPException(status_code=400, detail=f"Continuous variable '{var_continuous}' not found in data")
     
     try:
         chart_json = get_box_plot_json(
-            analyzer.data,
+            analyzer.input_data,
             var_categorical=var_categorical,
             var_continuous=var_continuous
         )
@@ -256,16 +256,16 @@ async def get_box_plot(
 #     analyzer = storage_manager.get_analyzer(analyzer_id)
 #     if not analyzer:
 #         raise HTTPException(status_code=404, detail="Analyzer not found")
-#     if var_categorical not in analyzer.data.columns:
+#     if var_categorical not in analyzer.input_data.columns:
 #         raise HTTPException(status_code=400, detail=f"Categorical variable '{var_categorical}' not found in data")
-#     if var_continuous not in analyzer.data.columns:
+#     if var_continuous not in analyzer.input_data.columns:
 #         raise HTTPException(status_code=400, detail=f"Continuous variable '{var_continuous}' not found in data")
-#     if var_grouping not in analyzer.data.columns:
+#     if var_grouping not in analyzer.input_data.columns:
 #         raise HTTPException(status_code=400, detail=f"Grouping variable '{var_grouping}' not found in data")
     
 #     try:
 #         chart_json = get_grouped_box_plot_json(
-#             analyzer.data,
+#             analyzer.input_data,
 #             var_categorical=var_categorical,
 #             var_continuous=var_continuous,
 #             var_grouping=var_grouping
