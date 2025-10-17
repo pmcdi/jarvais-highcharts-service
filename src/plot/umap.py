@@ -80,7 +80,6 @@ def get_umap_json(umap_data: pd.DataFrame,
 
     # add data to series
     for category, umap_subset in umap_subsets.items():
-        print(umap_subset)
         series_list.append({
             "name": str(category),
             "data": [{"x": float(point[0]), "y": float(point[1])} for point in umap_subset.values],

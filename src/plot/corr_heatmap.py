@@ -1,4 +1,5 @@
 import pandas as pd
+import math
 from typing import Dict
 
 def get_corr_heatmap_json(
@@ -24,7 +25,9 @@ def get_corr_heatmap_json(
         for x, col_label in enumerate(labels):
             # if x <= y: # Only add points in the lower triangle
             value = corr.loc[row_label, col_label]
-            data.append([x, y, round(value, 2)])
+            # Handle NaN values - convert to None for JSON serialization
+            rounded_value = None if (math.isnan(value) if isinstance(value, float) else pd.isna(value)) else round(value, 2)
+            data.append([x, y, rounded_value])
 
     highcharts_config = {
         "chart": {

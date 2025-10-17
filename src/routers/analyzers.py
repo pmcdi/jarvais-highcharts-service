@@ -45,7 +45,7 @@ async def analyzer_info(
         data_info = AnalyzerInfo(
             analyzer_id=analyzer_id,
             filename=None,  # We don't store filename, so use None
-            file_shape=analyzer.data.shape,
+            file_shape=analyzer.input_data.shape,
             categorical_variables=analyzer.settings.categorical_columns,
             continuous_variables=analyzer.settings.continuous_columns,
             created_at=datetime.now().isoformat(),  # Note: we don't store creation time, so using current time
